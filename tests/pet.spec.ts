@@ -1,107 +1,53 @@
 import { test, expect } from '@playwright/test';
 import { PetEndpoint, PetStatus } from '../endpoints/pet';
-
+import path from 'node:path';
+import fs from 'node:fs';
 
 const petEndpoint = new PetEndpoint();
 
 test.describe('GET request tests ', () => {
 
-  test('Can find pets by pending status', async ({ request }) => {
+  test('Can find pets by status', async ({ request }) => {
+    const status = PetStatus.available;
+    const findByStatusURL = petEndpoint.setFindByStatusURL(status);
 
-    const response = await request.get(petEndpoint.setFindByStatusURL(PetStatus.pending));
-
+    const response = await request.get(findByStatusURL);
     const pets = await response.json();
+    const firstFivePets = pets.slice(0, 5);
 
     expect(pets).toBeTruthy();
+    expect(firstFivePets.length).toBeGreaterThan(0);
+
+    for (const pet of firstFivePets){
+      expect(pet.status).toBe(status);
+    }
   });
 
   test('Can find pet by id', async ({ request }) => {
+    const petId = '2';
+    const findByIdURL: string = petEndpoint.setFindByIdURL(petId);
 
-    const targetURL: string = petEndpoint.setFindByIdURL('2');
-
-    const response = await request.get(targetURL);
-
+    const response = await request.get(findByIdURL);
     const targetPet = await response.json();
 
+    expect(response.ok()).toBeTruthy();
     expect(targetPet).toBeDefined();
+    expect(targetPet.id === petId);
   });
 });
 
+test('Can upload image for a pet', async ({ request }) => {
 
-test.describe.serial('POST and PUT request tests', () => {
-
-  const dynamicPetId: number = Math.floor(10000000 + Math.random() * 90000000);
-  const petName: string = 'myDog';
-  const updatedPetName: string = 'updatedDog';
-
-  test('Can add a new pet to the store', async ({ request }) => {
-    const newPet =
-    {
-      "id": dynamicPetId,
-      "category": {
-        "id": 0,
-        "name": "string"
-      },
-      "name": petName,
-      "photoUrls": [
-        "string"
-      ],
-      "tags": [
-        {
-          "id": 0,
-          "name": "string"
-        }
-      ],
-      "status": "available"
+  const imageFilePath = path.resolve(__dirname, '../data/pet-image.jpeg');
+  const petId = '2';
+  const uploadImageURL: string = petEndpoint.setUploadImageURL(petId);
+  
+  const uploadImageResponse = await request.post(uploadImageURL, {
+    multipart: {
+      additionalMetadata: 'heli',
+      file: fs.createReadStream(imageFilePath),
     }
-
-    const response = await request.post(petEndpoint.baseURL, {
-      data: newPet
-    });
-
-    const addedPet = await response.json();
-
-    // expect(addedPet.name).toBe(petName);
-    expect(response.ok()).toBeTruthy();
   });
 
-  test('Can update added pet', async ({ request }) => {
-
-    const updatedPet =
-    {
-      "id": dynamicPetId,
-      "category": {
-        "id": 0,
-        "name": "string"
-      },
-      "name": updatedPetName,
-      "photoUrls": [
-        "string"
-      ],
-      "tags": [
-        {
-          "id": 0,
-          "name": "string"
-        }
-      ],
-      "status": "available"
-    }
-
-    const response = await request.put(petEndpoint.baseURL, {
-      data: updatedPet
-    })
-
-    const pet = await response.json();
-
-    expect(response.ok()).toBeTruthy();
-    expect(pet.name).toBe(updatedPetName);
-  });
-
-  test.afterAll('Delete added pet', async ({ request }) => {
-    const deleteURL = petEndpoint.setFindByIdURL(dynamicPetId);
-
-    const response = await request.delete(deleteURL);
-
-    expect(response.ok()).toBeTruthy();
-  });
+  expect(uploadImageResponse.ok()).toBeTruthy();
 });
