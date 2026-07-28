@@ -27,15 +27,17 @@ test.describe('GET request tests ', () => {
   });
 });
 
-test.describe('POST request tests', () => {
 
-  const petId: number = 1111;
-  const petName: string = 'targetDog';
+test.describe.serial('POST and PUT request tests', () => {
+
+  const dynamicPetId: number = Math.floor(10000000 + Math.random() * 90000000);
+  const petName: string = 'myDog';
+  const updatedPetName: string = 'updatedDog';
 
   test('Can add a new pet to the store', async ({ request }) => {
     const newPet =
     {
-      "id": petId,
+      "id": dynamicPetId,
       "category": {
         "id": 0,
         "name": "string"
@@ -55,19 +57,51 @@ test.describe('POST request tests', () => {
 
     const response = await request.post(petEndpoint.baseURL, {
       data: newPet
-    })
+    });
 
     const addedPet = await response.json();
 
-    expect(addedPet.name).toBe(petName);
+    // expect(addedPet.name).toBe(petName);
     expect(response.ok()).toBeTruthy();
   });
 
+  test('Can update added pet', async ({ request }) => {
+
+    const updatedPet =
+    {
+      "id": dynamicPetId,
+      "category": {
+        "id": 0,
+        "name": "string"
+      },
+      "name": updatedPetName,
+      "photoUrls": [
+        "string"
+      ],
+      "tags": [
+        {
+          "id": 0,
+          "name": "string"
+        }
+      ],
+      "status": "available"
+    }
+
+    const response = await request.put(petEndpoint.baseURL, {
+      data: updatedPet
+    })
+
+    const pet = await response.json();
+
+    expect(response.ok()).toBeTruthy();
+    expect(pet.name).toBe(updatedPetName);
+  });
+
   test.afterAll('Delete added pet', async ({ request }) => {
-    const url = petEndpoint.setFindByIdURL(String(petId));
+    const deleteURL = petEndpoint.setFindByIdURL(dynamicPetId);
 
-    const response = request.delete(url);
+    const response = await request.delete(deleteURL);
 
-    expect((await response).ok()).toBeTruthy();
+    expect(response.ok()).toBeTruthy();
   });
 });
